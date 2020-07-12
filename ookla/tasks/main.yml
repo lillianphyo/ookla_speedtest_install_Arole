@@ -1,0 +1,95 @@
+---
+# tasks file for ookla
+ - name: useradd ookla
+   user:
+     name: ookla
+     password: "{{ 'ooklaapn2020!' | password_hash('sha512') }}"
+     create_home: yes
+     shell: /bin/bash
+     state: present
+
+ - name: create folder /opt/ookla
+   file:
+     path: /opt/ookla
+     state: directory
+     mode: 755
+     owner: ookla
+     group: ookla
+
+ - name: download the script
+   get_url:
+     url: https://install.speedtest.net/ooklaserver/ooklaserver.sh
+     dest: /opt/ookla/ooklaserver.sh
+     mode: 755
+ 
+ - name: install the server daemon
+   command:
+     cmd: sh /opt/ookla/ooklaserver.sh  install -f
+   async: 2400
+   poll: 0
+   register: result
+ 
+ - name: check and retry
+   async_status: 
+     jid: "{{ result.ansible_job_id }}"
+   register: job_result
+   until: job_result.finished
+   retries: 20
+
+ - name: ensure server daemon starts automatically
+   lineinfile:
+     path: /etc/rc.local
+     line: su ookla -c '/opt/ookla/OoklaServer --daemon'
+ 
+ - name: install httpd
+   yum:
+     name: httpd
+     state: latest
+   register: install_status
+   notify: enable_service
+
+ - name: start the service
+   service: 
+     name: httpd
+     state: started
+   when: install_status is succeeded
+
+ - name: donwload file for HTTP Legacy fallback
+   get_url:
+     url: http://install.speedtest.net/httplegacy/http_legacy_fallback.zip
+     dest: /opt/http_legacy_fallback.zip
+
+ - name: extract the zip file
+   unarchive:
+     src: /opt/http_legacy_fallback.zip
+     dest: /var/www/html
+     owner: apache
+     group: apache
+   
+ - name: http_fw_rule
+   firewalld:
+     port: 8080/tcp
+     permanent: yes
+     immediate: yes
+     state: enabled
+     zone: public
+   notify: reload_firewalld
+
+ - name: ensure crossdomain.xml file is available
+   stat: 
+     path: /var/www/html/crossdomain.xml
+   register: file_status
+ 
+ - name: edith crossdomain.xml
+   lineinfile:
+     path: /var/www/html/crossdomain.xml
+     line: <allow-access-from domain="*.myanmarapn.com" />
+     insertafter: '^<allow-access-from domain="*.ookla.com" />'
+   when: file_status.stat.exists
+
+ - name: define selinux context
+   sefcontext:
+     target: '/var/www/html/speedtest(/.*)?'
+     setype: httpd_sys_content_t
+     state: present
+   

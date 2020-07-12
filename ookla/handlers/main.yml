@@ -1,0 +1,12 @@
+---
+# handlers file for ookla
+
+ - name: enable_service 
+   service:
+     name: httpd
+     enabled: yes
+  
+ - name: reload_firewalld
+   service:
+     name: firewalld
+     state: reloaded
