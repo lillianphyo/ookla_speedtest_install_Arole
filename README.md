@@ -2,7 +2,7 @@
 ansible role to install ookla speedtest   
 
 # prerequisitesyum  install      
-https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y   
+yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y   
 yum install ansible -y   
 yum install git vim wget unzip   
    
