@@ -1,0 +1,8 @@
+---
+- hosts: ookla
+  become: yes
+  become_user: root
+  become_method: sudo
+  roles:
+    - role: ookla
+      when: ansible_processor_vcpus >= 4 and ansible_memtotal_mb >= 1024 and  ansible_os_family == 'RedHat'
